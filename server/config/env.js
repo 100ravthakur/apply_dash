@@ -13,4 +13,7 @@ module.exports = {
   CLIENT_URL: process.env.CLIENT_URL || 'http://localhost:5173',
   ADZUNA_APP_ID: process.env.ADZUNA_APP_ID || '',
   ADZUNA_APP_KEY: process.env.ADZUNA_APP_KEY || '',
+  GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || '',
+  GITHUB_CLIENT_ID: process.env.GITHUB_CLIENT_ID || '',
+  GITHUB_CLIENT_SECRET: process.env.GITHUB_CLIENT_SECRET || '',
 };

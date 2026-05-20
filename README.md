@@ -1,143 +1,68 @@
-# AutoApply Pro 🚀
+# AutoApply Pro
 
-**Work Smart. Apply Automatically.**
+AI-powered job application automation — upload your resume, and it auto-applies to 30+ jobs daily.
 
-AI-powered job application platform that applies to 30 jobs daily across LinkedIn, Indeed, Naukri and more.
+## Quick Start
 
----
+### 1. Prerequisites
+- Node.js 18+
+- MongoDB Atlas account (free tier works)
 
-## 🏗️ Tech Stack
-
-- **Frontend:** React 18 + Vite + Recharts
-- **Backend:** Node.js + Express
-- **Database:** MongoDB (with mock data fallback — works without DB!)
-- **AI:** Claude (Anthropic) for job matching, cover letters, interview prep
-- **Security:** AES-256-CBC credential encryption, JWT auth
-
----
-
-## ⚡ Quick Start (Local Development)
-
-### 1. Clone & Setup
-
-```bash
-git clone <your-repo>
-cd autoapply-pro
-cp .env.example .env
-# Edit .env and add your ANTHROPIC_API_KEY
-```
-
-### 2. Install & Run Backend
-
+### 2. Server Setup
 ```bash
 cd server
+cp ../.env.example ../.env   # then edit with your real values
 npm install
 npm run dev
-# Server runs on http://localhost:5000
 ```
 
-### 3. Install & Run Frontend
-
+### 3. Client Setup
 ```bash
 cd client
+cp .env.example .env         # then edit with your real values
 npm install
 npm run dev
-# App runs on http://localhost:5173
 ```
 
-### 4. Open the app
+### 4. Required Environment Variables
 
-Go to **http://localhost:5173** and register an account.
+#### Server (`.env` in project root)
+| Variable | Where to get it |
+|---|---|
+| `MONGODB_URI` | [MongoDB Atlas](https://cloud.mongodb.com) → Create Cluster → Connect → Connection String |
+| `JWT_SECRET` | Any random 32+ character string |
+| `REFRESH_TOKEN_SECRET` | Any random 32+ character string |
+| `GROQ_API_KEY` | [console.groq.com](https://console.groq.com) (free) |
 
----
+#### Google OAuth (optional but recommended)
+1. Go to [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
+2. Create OAuth 2.0 Client ID (Web application)
+3. Add authorized JavaScript origins: `http://localhost:5173` and your production URL
+4. Add authorized redirect URIs: `http://localhost:5173` and your production URL
+5. Copy Client ID → set `GOOGLE_CLIENT_ID` in server `.env` AND `VITE_GOOGLE_CLIENT_ID` in client `.env`
 
-## 🔑 Environment Variables
+#### GitHub OAuth (optional but recommended)
+1. Go to [GitHub Developer Settings](https://github.com/settings/developers) → OAuth Apps → New
+2. Set Homepage URL to your app URL
+3. Set Authorization callback URL to: `https://your-backend-url/api/auth/github/callback`
+4. Copy Client ID → `GITHUB_CLIENT_ID` (server) + `VITE_GITHUB_CLIENT_ID` (client)
+5. Copy Client Secret → `GITHUB_CLIENT_SECRET` (server only — never expose this to the client)
 
-Copy `.env.example` to `.env` and fill in:
+#### Client (`client/.env`)
+| Variable | Value |
+|---|---|
+| `VITE_API_URL` | Your backend URL + `/api` (e.g., `https://apply-dash.onrender.com/api`) — leave empty for local dev with Vite proxy |
+| `VITE_GOOGLE_CLIENT_ID` | Same as server's `GOOGLE_CLIENT_ID` |
+| `VITE_GITHUB_CLIENT_ID` | Same as server's `GITHUB_CLIENT_ID` |
 
-| Variable | Description | Required |
-|---|---|---|
-| `MONGODB_URI` | MongoDB connection string | Optional (mock data works without it) |
-| `JWT_SECRET` | Secret for JWT tokens | ✅ Required |
-| `ANTHROPIC_API_KEY` | Claude AI API key | For AI features |
-| `ENCRYPTION_KEY` | 32-char key for credential encryption | Optional |
+### 5. Deploy
+- **Server**: Deploy to Render/Railway/Fly.io — set all env vars in the dashboard
+- **Client**: Deploy to Vercel — set `VITE_API_URL`, `VITE_GOOGLE_CLIENT_ID`, `VITE_GITHUB_CLIENT_ID` in Vercel env settings
 
----
+## Common Issues
 
-## 🐳 Docker Deployment
+### Login returns 500
+Your `MONGODB_URI` is a placeholder or the connection is failing. Replace it with a real MongoDB Atlas connection string.
 
-```bash
-cp .env.example .env
-# Fill in your .env values
-
-docker-compose up -d
-# App runs on http://localhost:80
-```
-
----
-
-## 📁 Project Structure
-
-```
-autoapply-pro/
-├── server/
-│   ├── config/          # DB & env config
-│   ├── controllers/     # Route handlers
-│   ├── middleware/      # Auth, rate limiting, error handling
-│   ├── models/          # MongoDB schemas
-│   ├── routes/          # Express routers
-│   ├── services/
-│   │   ├── ai/          # Claude AI integration
-│   │   ├── automation/  # Bot engine
-│   │   └── encryption/  # AES-256 credential encryption
-│   └── utils/           # JWT, mock data, helpers
-│
-├── client/
-│   └── src/
-│       ├── components/  # Sidebar, Topbar, shared UI
-│       ├── context/     # Auth context
-│       ├── pages/       # All page components
-│       ├── services/    # Axios API client
-│       └── styles/      # Global CSS design system
-│
-├── docker-compose.yml
-└── .env.example
-```
-
----
-
-## 🤖 Features
-
-- **Dashboard** — Live application feed, stats, weekly chart
-- **Job Queue** — AI-matched jobs sorted by score, instant apply
-- **Applications** — Track all applications with status management
-- **Platforms** — Connect LinkedIn, Indeed, Naukri (AES-256 encrypted)
-- **AI Assistant** — Claude-powered chat for cover letters, interview prep
-- **Analytics** — Response rates, platform breakdown, skills in demand
-- **Interview Prep** — AI-generated questions + mock interview mode
-- **Companies** — Research companies, tech stacks, ratings
-
----
-
-## 🔒 Security Notes
-
-- Platform passwords are AES-256-CBC encrypted before storage
-- JWT tokens with refresh token rotation
-- Rate limiting on all API endpoints
-- Helmet.js for HTTP security headers
-
----
-
-## 📞 API Endpoints
-
-| Method | Endpoint | Description |
-|---|---|---|
-| POST | `/api/auth/register` | Create account |
-| POST | `/api/auth/login` | Login |
-| GET | `/api/jobs/queue` | AI-matched job queue |
-| GET | `/api/applications` | All applications |
-| POST | `/api/ai/chat` | Chat with Claude AI |
-| POST | `/api/automation/start` | Start auto-apply bot |
-| GET | `/api/analytics/overview` | Analytics overview |
-
-Full API docs available at `http://localhost:5000/health`
+### Google/GitHub buttons don't appear
+The OAuth buttons only render when their client IDs are configured. Set `VITE_GOOGLE_CLIENT_ID` and/or `VITE_GITHUB_CLIENT_ID` in `client/.env`.

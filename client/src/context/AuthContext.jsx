@@ -20,20 +20,31 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => { fetchUser(); }, [fetchUser]);
 
+  const handleAuthResponse = (data) => {
+    localStorage.setItem('token', data.token);
+    localStorage.setItem('refreshToken', data.refreshToken);
+    setUser(data.user);
+    return data.user;
+  };
+
   const login = async (email, password) => {
     const res = await api.post('/auth/login', { email, password });
-    localStorage.setItem('token', res.data.token);
-    localStorage.setItem('refreshToken', res.data.refreshToken);
-    setUser(res.data.user);
-    return res.data.user;
+    return handleAuthResponse(res.data);
   };
 
   const register = async (data) => {
     const res = await api.post('/auth/register', data);
-    localStorage.setItem('token', res.data.token);
-    localStorage.setItem('refreshToken', res.data.refreshToken);
-    setUser(res.data.user);
-    return res.data.user;
+    return handleAuthResponse(res.data);
+  };
+
+  const googleLogin = async (credential) => {
+    const res = await api.post('/auth/google', { credential });
+    return handleAuthResponse(res.data);
+  };
+
+  const githubLogin = async (code) => {
+    const res = await api.post('/auth/github', { code });
+    return handleAuthResponse(res.data);
   };
 
   const logout = async () => {
@@ -43,7 +54,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <Ctx.Provider value={{ user, loading, login, register, logout, setUser, refetch: fetchUser }}>
+    <Ctx.Provider value={{ user, loading, login, register, googleLogin, githubLogin, logout, setUser, refetch: fetchUser }}>
       {children}
     </Ctx.Provider>
   );
