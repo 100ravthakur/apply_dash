@@ -1,7 +1,6 @@
 {
   "name": "autoapply-pro-server",
-  "version": "1.0.0",
-  "description": "AutoApply Pro Backend API",
+  "version": "3.0.0",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -17,10 +16,13 @@
     "express-rate-limit": "^7.2.0",
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
+    "mammoth": "^1.7.1",
     "mongoose": "^8.3.4",
     "morgan": "^1.10.0",
     "multer": "^1.4.5-lts.1",
-    "node-cron": "^3.0.3"
+    "node-cron": "^3.0.3",
+    "nodemailer": "^8.0.7",
+    "pdf-parse": "^1.1.1"
   },
   "devDependencies": {
     "nodemon": "^3.1.0"

@@ -1,19 +1,16 @@
 require('dotenv').config();
-
 module.exports = {
-  PORT: 5000,
+  PORT: parseInt(process.env.PORT) || 5000,
   NODE_ENV: process.env.NODE_ENV || 'development',
-  MONGODB_URI: 'mongodb+srv://job_app:j8YIfQiNFqotguUi@cluster0.m4cama4.mongodb.net/autoapply_pro?retryWrites=true&w=majority',
-  JWT_SECRET: '7f8c2d91b4e5a7c9d3e1f6a8b0c2d4e6',
+  MONGODB_URI: process.env.MONGODB_URI || '',
+  JWT_SECRET: process.env.JWT_SECRET || 'change_this_in_production_min32chars!',
   JWT_EXPIRES_IN: '7d',
-  REFRESH_TOKEN_SECRET: 'e9a1c7d4f8b2a5c6d3e7f1a9b4c8d2e5',
+  REFRESH_TOKEN_SECRET: process.env.REFRESH_TOKEN_SECRET || 'refresh_change_this_now_min32chars!',
   REFRESH_TOKEN_EXPIRES_IN: '30d',
-  ENCRYPTION_KEY: '12345678901234567890123456789012',
-  ENCRYPTION_IV: '1234567890123456',
+  ENCRYPTION_KEY: process.env.ENCRYPTION_KEY || '12345678901234567890123456789012',
+  ENCRYPTION_IV: process.env.ENCRYPTION_IV || '1234567890123456',
   GROQ_API_KEY: process.env.GROQ_API_KEY || '',
-  CLIENT_URL: 'http://localhost:5173',
-  SMTP_HOST: 'smtp.gmail.com',
-  SMTP_PORT: 587,
-  SMTP_USER: '',
-  SMTP_PASS: '',
+  CLIENT_URL: process.env.CLIENT_URL || 'http://localhost:5173',
+  ADZUNA_APP_ID: process.env.ADZUNA_APP_ID || '',
+  ADZUNA_APP_KEY: process.env.ADZUNA_APP_KEY || '',
 };

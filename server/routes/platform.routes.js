@@ -1,13 +1,11 @@
-const router = require('express').Router();
-const { getPlatforms, connectPlatform, disconnectPlatform, pausePlatform, resumePlatform, getPlatformStatus } = require('../controllers/platformController');
-const { protect } = require('../middleware/auth.middleware');
-
-router.use(protect);
-router.get('/', getPlatforms);
-router.post('/connect', connectPlatform);
-router.delete('/:platform', disconnectPlatform);
-router.put('/:platform/pause', pausePlatform);
-router.put('/:platform/resume', resumePlatform);
-router.get('/:platform/status', getPlatformStatus);
-
-module.exports = router;
+const r = require('express').Router();
+const c = require('../controllers/platformController');
+const { protect } = require('../middleware/auth');
+r.use(protect);
+r.get('/', c.getAll);
+r.post('/connect', c.connect);
+r.delete('/:platform', c.disconnect);
+r.put('/:platform/pause', c.pause);
+r.put('/:platform/resume', c.resume);
+r.post('/:platform/verify', c.verify);
+module.exports = r;

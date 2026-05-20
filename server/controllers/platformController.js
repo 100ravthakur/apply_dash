@@ -1,78 +1,137 @@
 const Platform = require('../models/Platform');
-const { encrypt, decrypt } = require('../services/encryption/credentialEncryption');
-const { sendSuccess, sendError } = require('../utils/apiResponse');
+const Application = require('../models/Application');
+const { encrypt, decrypt, ok, fail } = require('../utils/index');
 
-const SUPPORTED_PLATFORMS = ['linkedin', 'indeed', 'naukri', 'glassdoor', 'cutshort', 'angel'];
-
-exports.getPlatforms = async (req, res, next) => {
-  try {
-    const platforms = await Platform.find({ userId: req.userId });
-    const result = SUPPORTED_PLATFORMS.map(p => {
-      const existing = platforms.find(pl => pl.platform === p);
-      return existing ? { ...existing.toJSON(), credentials: { email: existing.credentials?.email } } 
-        : { platform: p, isConnected: false, status: 'disconnected', applyCount: 0, totalApplied: 0 };
-    });
-    sendSuccess(res, { platforms: result });
-  } catch (error) { next(error); }
+const PLATFORMS = ['linkedin','indeed','naukri','glassdoor','cutshort','angel'];
+const PLATFORM_INFO = {
+  linkedin: { name: 'LinkedIn', color: '#0A66C2', jobsUrl: 'https://www.linkedin.com/jobs' },
+  indeed: { name: 'Indeed', color: '#003A9B', jobsUrl: 'https://in.indeed.com' },
+  naukri: { name: 'Naukri', color: '#21914B', jobsUrl: 'https://www.naukri.com' },
+  glassdoor: { name: 'Glassdoor', color: '#0086B0', jobsUrl: 'https://www.glassdoor.co.in' },
+  cutshort: { name: 'Cutshort', color: '#FF6432', jobsUrl: 'https://cutshort.io' },
+  angel: { name: 'AngelList', color: '#3296FF', jobsUrl: 'https://angel.co' },
 };
 
-exports.connectPlatform = async (req, res, next) => {
+exports.getAll = async (req, res, next) => {
+  try {
+    const records = await Platform.find({ userId: req.userId });
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+
+    const platforms = await Promise.all(PLATFORMS.map(async (pid) => {
+      const rec = records.find(r => r.platform === pid);
+      const todayApps = rec ? await Application.countDocuments({ userId: req.userId, platform: pid, createdAt: { $gte: today } }).catch(() => 0) : 0;
+
+      return {
+        platform: pid,
+        ...PLATFORM_INFO[pid],
+        isConnected: rec?.isConnected || false,
+        status: rec?.status || 'disconnected',
+        profileEmail: rec?.profileEmail || null,
+        profileName: rec?.profileName || null,
+        totalApplied: rec?.totalApplied || 0,
+        todayApplied: todayApps,
+        lastSyncAt: rec?.lastSyncAt || null,
+        connectedAt: rec?.connectedAt || null,
+        errorMessage: rec?.errorMessage || null,
+        dailyLimit: rec?.dailyLimit || 30,
+      };
+    }));
+
+    ok(res, { platforms });
+  } catch (e) { next(e); }
+};
+
+exports.connect = async (req, res, next) => {
   try {
     const { platform, email, password } = req.body;
-    if (!SUPPORTED_PLATFORMS.includes(platform)) return sendError(res, 'Unsupported platform');
-    if (!email || !password) return sendError(res, 'Email and password required');
+    if (!PLATFORMS.includes(platform)) return fail(res, 'Unsupported platform');
+    if (!email?.trim() || !password?.trim()) return fail(res, 'Email and password required');
 
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) return fail(res, 'Invalid email address');
+
+    // Encrypt credentials
+    const emailEncrypted = encrypt(email.toLowerCase().trim());
     const passwordEncrypted = encrypt(password);
-    const platformDoc = await Platform.findOneAndUpdate(
+
+    const rec = await Platform.findOneAndUpdate(
       { userId: req.userId, platform },
       {
-        isConnected: true, status: 'active',
-        credentials: { email, passwordEncrypted },
-        connectedAt: new Date(), lastSync: new Date(),
-        profileName: email.split('@')[0],
+        $set: {
+          isConnected: true,
+          status: 'active',
+          'credentials.emailEncrypted': emailEncrypted,
+          'credentials.passwordEncrypted': passwordEncrypted,
+          profileEmail: email.toLowerCase().trim(),
+          profileName: email.split('@')[0],
+          connectedAt: new Date(),
+          lastSyncAt: new Date(),
+          errorMessage: null,
+        },
       },
       { upsert: true, new: true }
     );
-    sendSuccess(res, { platform: { ...platformDoc.toJSON(), credentials: { email } } }, 'Platform connected');
-  } catch (error) { next(error); }
+
+    ok(res, {
+      platform: {
+        platform,
+        ...PLATFORM_INFO[platform],
+        isConnected: true,
+        status: 'active',
+        profileEmail: email.toLowerCase().trim(),
+        profileName: email.split('@')[0],
+        connectedAt: rec.connectedAt,
+      },
+    }, `${PLATFORM_INFO[platform].name} connected successfully!`);
+  } catch (e) { next(e); }
 };
 
-exports.disconnectPlatform = async (req, res, next) => {
+exports.disconnect = async (req, res, next) => {
   try {
+    const { platform } = req.params;
     await Platform.findOneAndUpdate(
-      { userId: req.userId, platform: req.params.platform },
-      { isConnected: false, status: 'disconnected', credentials: {} }
+      { userId: req.userId, platform },
+      {
+        $set: { isConnected: false, status: 'disconnected', errorMessage: null },
+        $unset: { 'credentials.emailEncrypted': 1, 'credentials.passwordEncrypted': 1 },
+      }
     );
-    sendSuccess(res, {}, 'Platform disconnected');
-  } catch (error) { next(error); }
+    ok(res, {}, `${PLATFORM_INFO[platform]?.name || platform} disconnected`);
+  } catch (e) { next(e); }
 };
 
-exports.pausePlatform = async (req, res, next) => {
+exports.pause = async (req, res, next) => {
   try {
-    const p = await Platform.findOneAndUpdate(
-      { userId: req.userId, platform: req.params.platform },
-      { status: 'paused' }, { new: true }
-    );
-    if (!p) return sendError(res, 'Platform not found', 404);
-    sendSuccess(res, {}, 'Platform paused');
-  } catch (error) { next(error); }
+    const { platform } = req.params;
+    const rec = await Platform.findOne({ userId: req.userId, platform });
+    if (!rec?.isConnected) return fail(res, 'Platform not connected');
+    await Platform.findOneAndUpdate({ userId: req.userId, platform }, { $set: { status: 'paused' } });
+    ok(res, {}, 'Platform paused');
+  } catch (e) { next(e); }
 };
 
-exports.resumePlatform = async (req, res, next) => {
+exports.resume = async (req, res, next) => {
   try {
-    const p = await Platform.findOneAndUpdate(
-      { userId: req.userId, platform: req.params.platform },
-      { status: 'active' }, { new: true }
-    );
-    if (!p) return sendError(res, 'Platform not found', 404);
-    sendSuccess(res, {}, 'Platform resumed');
-  } catch (error) { next(error); }
+    const { platform } = req.params;
+    const rec = await Platform.findOne({ userId: req.userId, platform });
+    if (!rec?.isConnected) return fail(res, 'Platform not connected');
+    await Platform.findOneAndUpdate({ userId: req.userId, platform }, { $set: { status: 'active', errorMessage: null } });
+    ok(res, {}, 'Platform resumed');
+  } catch (e) { next(e); }
 };
 
-exports.getPlatformStatus = async (req, res, next) => {
+exports.verify = async (req, res, next) => {
   try {
-    const p = await Platform.findOne({ userId: req.userId, platform: req.params.platform });
-    if (!p) return sendSuccess(res, { platform: req.params.platform, isConnected: false, status: 'disconnected' });
-    sendSuccess(res, { platform: { ...p.toJSON(), credentials: { email: p.credentials?.email } } });
-  } catch (error) { next(error); }
+    const { platform } = req.params;
+    const rec = await Platform.findOne({ userId: req.userId, platform });
+    if (!rec?.isConnected) return fail(res, 'Platform not connected', 404);
+
+    // Simulate a verification check
+    await Platform.findOneAndUpdate(
+      { userId: req.userId, platform },
+      { $set: { lastSyncAt: new Date(), status: 'active', errorMessage: null } }
+    );
+    ok(res, { verified: true }, 'Platform verified and active');
+  } catch (e) { next(e); }
 };

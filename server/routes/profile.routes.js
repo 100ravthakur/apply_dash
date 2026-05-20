@@ -1,14 +1,11 @@
-const router = require('express').Router();
-const { getProfile, updateProfile, updatePreferences, getPreferences, addSkill, removeSkill, getProfileStrength } = require('../controllers/profileController');
-const { protect } = require('../middleware/auth.middleware');
-
-router.use(protect);
-router.get('/', getProfile);
-router.put('/', updateProfile);
-router.put('/preferences', updatePreferences);
-router.get('/preferences', getPreferences);
-router.get('/strength', getProfileStrength);
-router.post('/skills', addSkill);
-router.delete('/skills/:category/:skill', removeSkill);
-
-module.exports = router;
+const r = require('express').Router();
+const c = require('../controllers/profileController');
+const { protect } = require('../middleware/auth');
+r.use(protect);
+r.get('/', c.getProfile);
+r.put('/', c.updateProfile);
+r.put('/preferences', c.updatePreferences);
+r.get('/strength', c.getStrength);
+r.post('/skills', c.addSkill);
+r.delete('/skills/:category/:skill', c.removeSkill);
+module.exports = r;

@@ -1,14 +1,12 @@
-const router = require('express').Router();
-const { getApplications, getApplicationById, createManualApplication, updateApplicationStatus, deleteApplication, getStats, generateFollowUp } = require('../controllers/applicationController');
-const { protect } = require('../middleware/auth.middleware');
-
-router.use(protect);
-router.get('/stats', getStats);
-router.get('/', getApplications);
-router.post('/', createManualApplication);
-router.get('/:id', getApplicationById);
-router.put('/:id/status', updateApplicationStatus);
-router.delete('/:id', deleteApplication);
-router.post('/:id/follow-up', generateFollowUp);
-
-module.exports = router;
+const r = require('express').Router();
+const c = require('../controllers/applicationController');
+const { protect } = require('../middleware/auth');
+r.use(protect);
+r.get('/stats', c.getStats);
+r.get('/', c.getAll);
+r.post('/', c.create);
+r.get('/:id', c.getById);
+r.put('/:id/status', c.updateStatus);
+r.delete('/:id', c.remove);
+r.post('/:id/follow-up', c.followUp);
+module.exports = r;
