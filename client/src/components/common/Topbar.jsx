@@ -1,68 +1,56 @@
 import { useState, useEffect } from 'react';
-import { Bell } from 'lucide-react';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 
-export default function Topbar({ title, subtitle, extra }) {
-  const [botRunning, setBotRunning] = useState(false);
-  const [todayCount, setTodayCount] = useState(23);
+export default function Topbar({ title, subtitle, actions }) {
+  const [botStatus, setBotStatus] = useState(null);
 
   useEffect(() => {
-    api.get('/automation/status').then(r => {
-      setBotRunning(r.data.status === 'running');
-      setTodayCount(r.data.todayCount || 23);
-    }).catch(() => {});
+    api.get('/auto-apply/status').then(r => setBotStatus(r.data)).catch(() => {});
   }, []);
 
   const toggleBot = async () => {
     try {
-      if (botRunning) {
-        await api.post('/automation/stop');
-        setBotRunning(false);
-        toast.success('Automation paused');
+      if (botStatus?.isRunning) {
+        await api.post('/auto-apply/stop');
+        setBotStatus(s => ({ ...s, isRunning: false }));
+        toast.success('Auto-apply paused');
       } else {
-        await api.post('/automation/start');
-        setBotRunning(true);
-        toast.success('Automation started!');
+        await api.post('/auto-apply/start');
+        setBotStatus(s => ({ ...s, isRunning: true }));
+        toast.success('Auto-apply started!');
       }
-    } catch (e) {
-      toast.error(e.response?.data?.message || 'Error toggling automation');
-    }
+    } catch (e) { toast.error(e.response?.data?.message || 'Error'); }
   };
 
+  const running = botStatus?.isRunning;
+
   return (
-    <div style={{ background: 'var(--bg2)', borderBottom: '1px solid var(--border)' }}>
-      {/* Top indicator bar */}
-      <div style={{ background: 'rgba(255,107,0,0.06)', borderBottom: '1px solid rgba(255,107,0,0.12)', padding: '6px 22px', display: 'flex', alignItems: 'center', gap: 12, fontSize: 11, color: 'var(--txt2)', fontFamily: 'var(--font-mono)' }}>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-          <span style={{ width: 6, height: 6, borderRadius: '50%', background: botRunning ? 'var(--success)' : 'var(--txt3)', display: 'inline-block', animation: botRunning ? 'pulse 1.5s infinite' : 'none' }} />
-          {botRunning ? <span style={{ color: 'var(--accent)' }}>Bot running</span> : 'Bot stopped'}
+    <header style={{ background: 'var(--bg2)', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
+      {/* Status bar */}
+      <div style={{ padding: '5px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10, fontSize: 11, color: 'var(--txt3)', fontFamily: 'var(--font-mono)', background: running ? 'rgba(34,197,94,0.04)' : undefined }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <span style={{ width: 5, height: 5, borderRadius: '50%', background: running ? 'var(--success)' : 'var(--txt3)', display: 'inline-block', animation: running ? 'pulse 1.5s infinite' : 'none' }} />
+          {running ? <span style={{ color: 'var(--success)' }}>Bot running — {botStatus?.session?.currentCompany || 'searching...'}</span> : 'Bot idle'}
         </span>
-        <span>·</span>
-        <span>Applied <span style={{ color: 'var(--txt)' }}>{todayCount}/30</span> today</span>
-        <span>·</span>
-        <span>Week 20 of 2026</span>
+        <span style={{ color: 'var(--border2)' }}>·</span>
+        <span>{botStatus?.todayCount || 0}<span style={{ color: 'var(--border2)' }}>/</span>{botStatus?.dailyLimit || 30} applied today</span>
+        <span style={{ color: 'var(--border2)' }}>·</span>
+        <span>Total: {botStatus?.total || 0}</span>
       </div>
-      {/* Main topbar */}
-      <div style={{ padding: '12px 22px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      {/* Main */}
+      <div style={{ padding: '10px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 700, color: 'var(--txt)' }}>{title}</div>
-          {subtitle && <div style={{ fontSize: 11, color: 'var(--txt3)', fontFamily: 'var(--font-mono)', marginTop: 1 }}>{subtitle}</div>}
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 700, color: 'var(--txt)', letterSpacing: '-0.02em' }}>{title}</div>
+          {subtitle && <div style={{ fontSize: 11, color: 'var(--txt3)', marginTop: 1 }}>{subtitle}</div>}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          {extra}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 10px', background: botRunning ? 'rgba(0,200,150,0.08)' : 'rgba(85,85,85,0.15)', border: `1px solid ${botRunning ? 'rgba(0,200,150,0.22)' : 'var(--border)'}`, borderRadius: 20, fontSize: 11, color: botRunning ? 'var(--success)' : 'var(--txt3)', fontFamily: 'var(--font-mono)' }}>
-            <span style={{ width: 5, height: 5, borderRadius: '50%', background: botRunning ? 'var(--success)' : 'var(--txt3)', display: 'inline-block' }} />
-            {botRunning ? 'Running' : 'Stopped'}
-          </div>
-          <button className="btn btn-ghost btn-sm" onClick={toggleBot}>{botRunning ? '⏸ Pause' : '▶ Start'}</button>
-          <button className="btn btn-primary btn-sm" onClick={() => toast.info('Manual apply — go to Job Queue')}>+ Apply</button>
-          <button style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--bg3)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', position: 'relative', color: 'var(--txt2)' }}>
-            <Bell size={14} />
-            <span style={{ position: 'absolute', top: 6, right: 6, width: 6, height: 6, background: 'var(--accent)', borderRadius: '50%' }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {actions}
+          <button onClick={toggleBot} className={`btn btn-sm ${running ? 'btn-danger' : 'btn-primary'}`}>
+            {running ? '⏸ Stop Bot' : '▶ Start Bot'}
           </button>
         </div>
       </div>
-    </div>
+    </header>
   );
 }

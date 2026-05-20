@@ -1,71 +1,62 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { LayoutDashboard, Briefcase, FileText, Link2, MessageSquare, BarChart3, Users, Building2, Settings, LogOut, Zap } from 'lucide-react';
 
-const nav = [
+const NAV = [
   { section: 'Main', items: [
-    { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', badge: 'LIVE', badgeGreen: true },
-    { to: '/jobs', icon: Briefcase, label: 'Job Queue', badge: '30' },
-    { to: '/applications', icon: FileText, label: 'Applications', badge: '247' },
-    { to: '/platforms', icon: Link2, label: 'Platforms' },
+    { to: '/dashboard', icon: '▤', label: 'Dashboard' },
+    { to: '/auto-apply', icon: '⚡', label: 'Auto-Apply Engine', accent: true },
+    { to: '/resume', icon: '📄', label: 'Resume & AI' },
   ]},
-  { section: 'AI Tools', items: [
-    { to: '/ai', icon: MessageSquare, label: 'AI Assistant' },
-    { to: '/analytics', icon: BarChart3, label: 'Analytics' },
+  { section: 'Track', items: [
+    { to: '/jobs', icon: '💼', label: 'Job Queue' },
+    { to: '/applications', icon: '📋', label: 'Applications' },
+    { to: '/platforms', icon: '🔗', label: 'Platforms' },
   ]},
-  { section: 'Prep', items: [
-    { to: '/interviews', icon: Users, label: 'Interview Prep', badge: '2', badgeWarn: true },
-    { to: '/companies', icon: Building2, label: 'Companies' },
+  { section: 'Tools', items: [
+    { to: '/ai', icon: '🤖', label: 'AI Assistant' },
+    { to: '/analytics', icon: '📊', label: 'Analytics' },
+    { to: '/interviews', icon: '🎤', label: 'Interview Prep' },
+    { to: '/companies', icon: '🏢', label: 'Companies' },
   ]},
 ];
 
 export default function Sidebar() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-
-  const handleLogout = async () => {
-    await logout();
-    navigate('/login');
-  };
-
-  const initials = user?.name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'U';
+  const initials = user?.name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '??';
 
   return (
-    <aside style={{ width: 220, minWidth: 220, background: 'var(--bg2)', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', height: '100vh', flexShrink: 0 }}>
+    <aside style={{ width: 210, minWidth: 210, background: 'var(--bg2)', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', height: '100vh', flexShrink: 0 }}>
+
       {/* Logo */}
-      <div style={{ padding: '18px 16px 14px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10 }}>
-        <div style={{ width: 32, height: 32, background: 'var(--accent)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 15, color: '#fff', flexShrink: 0 }}>A</div>
+      <div style={{ padding: '14px 14px 12px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 9 }}>
+        <div style={{ width: 28, height: 28, background: 'var(--accent)', borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 13, color: '#fff', flexShrink: 0 }}>A</div>
         <div>
-          <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 14, color: 'var(--txt)' }}>AutoApply Pro</div>
-          <div style={{ fontSize: 10, color: 'var(--txt3)', fontFamily: 'var(--font-mono)' }}>v1.0 · {user?.subscription?.toUpperCase() || 'FREE'}</div>
+          <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 13, color: 'var(--txt)', letterSpacing: '-0.02em' }}>AutoApply Pro</div>
+          <div style={{ fontSize: 9, color: 'var(--txt3)', fontFamily: 'var(--font-mono)', letterSpacing: '0.05em' }}>AI JOB ENGINE</div>
         </div>
       </div>
 
       {/* Nav */}
-      <nav style={{ flex: 1, padding: '10px 8px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 1 }}>
-        {nav.map(({ section, items }) => (
-          <div key={section}>
-            <div style={{ fontSize: 10, color: 'var(--txt3)', fontFamily: 'var(--font-mono)', letterSpacing: '0.08em', padding: '10px 8px 5px', textTransform: 'uppercase' }}>{section}</div>
-            {items.map(({ to, icon: Icon, label, badge, badgeGreen, badgeWarn }) => (
+      <nav style={{ flex: 1, padding: '6px 8px', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+        {NAV.map(({ section, items }) => (
+          <div key={section} style={{ marginBottom: 2 }}>
+            <div style={{ fontSize: 9, color: 'var(--txt3)', fontFamily: 'var(--font-mono)', letterSpacing: '0.1em', padding: '9px 8px 3px', textTransform: 'uppercase', fontWeight: 600 }}>{section}</div>
+            {items.map(({ to, icon, label, accent }) => (
               <NavLink key={to} to={to} style={{ textDecoration: 'none' }}>
                 {({ isActive }) => (
                   <div style={{
-                    display: 'flex', alignItems: 'center', gap: 9, padding: '8px 10px', borderRadius: 8, cursor: 'pointer',
-                    fontSize: 13, color: isActive ? 'var(--accent)' : 'var(--txt2)',
-                    background: isActive ? 'var(--accent-glow)' : 'transparent',
-                    border: isActive ? '1px solid rgba(255,107,0,0.2)' : '1px solid transparent',
-                    position: 'relative', transition: 'all 0.15s', marginBottom: 1,
+                    display: 'flex', alignItems: 'center', gap: 8, padding: '6px 9px', borderRadius: 7, cursor: 'pointer',
+                    fontSize: 12.5, fontWeight: isActive ? 600 : 400, letterSpacing: '-0.01em',
+                    color: isActive ? (accent ? 'var(--accent)' : 'var(--txt)') : 'var(--txt2)',
+                    background: isActive ? (accent ? 'rgba(249,115,22,0.1)' : 'var(--bg3)') : 'transparent',
+                    border: `1px solid ${isActive ? (accent ? 'rgba(249,115,22,0.2)' : 'var(--border)') : 'transparent'}`,
+                    transition: 'all 0.12s', marginBottom: 1, position: 'relative',
                   }}>
-                    {isActive && <div style={{ position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)', width: 3, height: 16, background: 'var(--accent)', borderRadius: '0 2px 2px 0' }} />}
-                    <Icon size={15} style={{ opacity: isActive ? 1 : 0.65, flexShrink: 0 }} />
+                    {isActive && <div style={{ position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)', width: 2.5, height: 13, background: accent ? 'var(--accent)' : 'var(--txt2)', borderRadius: '0 2px 2px 0' }} />}
+                    <span style={{ fontSize: 13 }}>{icon}</span>
                     <span style={{ flex: 1 }}>{label}</span>
-                    {badge && (
-                      <span style={{
-                        background: badgeGreen ? 'var(--success)' : badgeWarn ? 'rgba(255,184,0,0.8)' : 'var(--accent)',
-                        color: '#fff', fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 9,
-                        fontFamily: 'var(--font-mono)',
-                      }}>{badge}</span>
-                    )}
+                    {accent && !isActive && <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--accent)', display: 'inline-block', animation: 'pulse 2s infinite' }} />}
                   </div>
                 )}
               </NavLink>
@@ -74,27 +65,24 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      {/* Settings & User */}
-      <div style={{ padding: 10, borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+      {/* Footer */}
+      <div style={{ padding: '8px 10px', borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 3 }}>
         <NavLink to="/settings" style={{ textDecoration: 'none' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '7px 10px', borderRadius: 8, color: 'var(--txt2)', fontSize: 13, cursor: 'pointer', transition: 'all 0.15s' }}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '5px 9px', borderRadius: 7, color: 'var(--txt2)', fontSize: 12, cursor: 'pointer', transition: 'all 0.12s' }}
             onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg3)'; e.currentTarget.style.color = 'var(--txt)'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--txt2)'; }}>
-            <Settings size={15} style={{ opacity: 0.65 }} />
-            <span>Settings</span>
+            onMouseLeave={e => { e.currentTarget.style.background = ''; e.currentTarget.style.color = 'var(--txt2)'; }}>
+            <span>⚙️</span><span>Settings</span>
           </div>
         </NavLink>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 8, background: 'var(--bg3)', cursor: 'pointer', position: 'relative' }}>
-          <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'linear-gradient(135deg, var(--accent), #FF4444)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#fff', flexShrink: 0 }}>{initials}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 9px', borderRadius: 8, background: 'var(--bg3)', border: '1px solid var(--border)' }}>
+          <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'linear-gradient(135deg, var(--accent) 0%, #c2410c 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: '#fff', flexShrink: 0 }}>{initials}</div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--txt)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user?.name || 'User'}</div>
-            <div style={{ fontSize: 10, color: 'var(--accent)', fontFamily: 'var(--font-mono)' }}>{user?.subscription?.toUpperCase() || 'FREE'}</div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--txt)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '-0.01em' }}>{user?.name}</div>
+            <div style={{ fontSize: 9, color: 'var(--accent)', fontFamily: 'var(--font-mono)', fontWeight: 600 }}>{(user?.subscription || 'free').toUpperCase()}</div>
           </div>
-          <button onClick={handleLogout} title="Logout" style={{ background: 'transparent', border: 'none', color: 'var(--txt3)', cursor: 'pointer', padding: 2, display: 'flex', alignItems: 'center' }}
+          <button onClick={async () => { await logout(); navigate('/login'); }} style={{ background: 'none', border: 'none', color: 'var(--txt3)', cursor: 'pointer', fontSize: 14, transition: 'color 0.12s', padding: 2, display: 'flex' }}
             onMouseEnter={e => e.currentTarget.style.color = 'var(--err)'}
-            onMouseLeave={e => e.currentTarget.style.color = 'var(--txt3)'}>
-            <LogOut size={13} />
-          </button>
+            onMouseLeave={e => e.currentTarget.style.color = 'var(--txt3)'}>↪</button>
         </div>
       </div>
     </aside>
