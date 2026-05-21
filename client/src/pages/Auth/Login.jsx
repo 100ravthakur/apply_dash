@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
@@ -6,13 +6,13 @@ import toast from 'react-hot-toast';
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 const GITHUB_CLIENT_ID = import.meta.env.VITE_GITHUB_CLIENT_ID || '';
 
-// Dynamically load Google Identity Services script
 const loadGoogleScript = () => {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     if (window.google?.accounts) return resolve();
     if (document.getElementById('google-gsi')) {
       const existing = document.getElementById('google-gsi');
       existing.addEventListener('load', resolve);
+      existing.addEventListener('error', reject);
       return;
     }
     const s = document.createElement('script');
@@ -21,6 +21,7 @@ const loadGoogleScript = () => {
     s.async = true;
     s.defer = true;
     s.onload = resolve;
+    s.onerror = reject;
     document.head.appendChild(s);
   });
 };
@@ -32,6 +33,7 @@ export default function Login() {
   const [form, setForm] = useState({ email: '', password: '' });
   const [loading, setLoading] = useState(false);
   const [oauthLoading, setOauthLoading] = useState('');
+  const googleInitialized = useRef(false);
   const set = k => e => setForm(f => ({ ...f, [k]: e.target.value }));
 
   // Handle GitHub OAuth callback code from URL
@@ -53,29 +55,10 @@ export default function Login() {
     }
   }, []);
 
-  // Initialize Google One Tap / Button
+  // Pre-load Google Identity Services script
   useEffect(() => {
     if (!GOOGLE_CLIENT_ID) return;
-    loadGoogleScript().then(() => {
-      if (!window.google?.accounts) return;
-      window.google.accounts.id.initialize({
-        client_id: GOOGLE_CLIENT_ID,
-        callback: handleGoogleResponse,
-        auto_select: false,
-      });
-      const btnDiv = document.getElementById('google-signin-btn');
-      if (btnDiv) {
-        window.google.accounts.id.renderButton(btnDiv, {
-          type: 'standard',
-          theme: 'outline',
-          size: 'large',
-          width: 320,
-          text: 'signin_with',
-          shape: 'rectangular',
-          logo_alignment: 'left',
-        });
-      }
-    });
+    loadGoogleScript().catch(() => {});
   }, []);
 
   const handleGoogleResponse = async (response) => {
@@ -92,13 +75,65 @@ export default function Login() {
     }
   };
 
+  const handleGoogle = async () => {
+    if (!GOOGLE_CLIENT_ID) {
+      return toast.error('Google sign-in is not configured. Please set VITE_GOOGLE_CLIENT_ID.');
+    }
+    setOauthLoading('google');
+    try {
+      await loadGoogleScript();
+      if (!window.google?.accounts) {
+        toast.error('Google sign-in failed to load. Please try again.');
+        setOauthLoading('');
+        return;
+      }
+      if (!googleInitialized.current) {
+        window.google.accounts.id.initialize({
+          client_id: GOOGLE_CLIENT_ID,
+          callback: handleGoogleResponse,
+          auto_select: false,
+        });
+        googleInitialized.current = true;
+      }
+      setOauthLoading('');
+      window.google.accounts.id.prompt((notification) => {
+        if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+          // One Tap was suppressed (browser settings, cooldown, etc.) — fall back to popup
+          window.google.accounts.oauth2.initCodeClient({
+            client_id: GOOGLE_CLIENT_ID,
+            scope: 'openid email profile',
+            ux_mode: 'popup',
+            callback: () => {},
+          });
+          // Use the renderButton approach as fallback in a temporary container
+          const tempDiv = document.createElement('div');
+          tempDiv.style.position = 'fixed';
+          tempDiv.style.top = '-9999px';
+          document.body.appendChild(tempDiv);
+          window.google.accounts.id.renderButton(tempDiv, {
+            type: 'standard', theme: 'outline', size: 'large',
+          });
+          const btn = tempDiv.querySelector('[role="button"]') || tempDiv.querySelector('div[style]');
+          if (btn) btn.click();
+          setTimeout(() => document.body.removeChild(tempDiv), 100);
+        }
+      });
+    } catch {
+      toast.error('Failed to load Google sign-in. Check your connection.');
+      setOauthLoading('');
+    }
+  };
+
   const handleGitHub = () => {
-    if (!GITHUB_CLIENT_ID) return toast.error('GitHub OAuth not configured');
+    if (!GITHUB_CLIENT_ID) {
+      return toast.error('GitHub sign-in is not configured. Please set VITE_GITHUB_CLIENT_ID.');
+    }
+    setOauthLoading('github');
     const apiUrl = import.meta.env.VITE_API_URL || '';
     const redirectUri = apiUrl
       ? `${apiUrl}/auth/github/callback`
       : `${window.location.origin}/api/auth/github/callback`;
-    const url = `https://github.com/login/oauth/authorize?client_id=${GITHUB_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=user:email`;
+    const url = `https://github.com/login/oauth/authorize?client_id=${GITHUB_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=user:email&state=login`;
     window.location.href = url;
   };
 
@@ -116,14 +151,14 @@ export default function Login() {
 
   const dividerStyle = { display: 'flex', alignItems: 'center', gap: 12, margin: '18px 0' };
   const lineStyle = { flex: 1, height: 1, background: 'var(--border)' };
-  const oauthBtnStyle = {
-    width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid var(--border)',
-    background: 'var(--bg2)', cursor: 'pointer', display: 'flex', alignItems: 'center',
-    justifyContent: 'center', gap: 10, fontSize: 13, fontWeight: 500, color: 'var(--txt)',
-    fontFamily: 'var(--font)', transition: 'all 0.15s',
-  };
-
-  const hasOAuth = GOOGLE_CLIENT_ID || GITHUB_CLIENT_ID;
+  const oauthBtnStyle = (hovered) => ({
+    width: '100%', padding: '11px 14px', borderRadius: 8, border: '1px solid var(--border)',
+    background: hovered ? 'var(--bg3)' : 'var(--bg2)', cursor: 'pointer', display: 'flex',
+    alignItems: 'center', justifyContent: 'center', gap: 10, fontSize: 13, fontWeight: 500,
+    color: 'var(--txt)', fontFamily: 'var(--font)', transition: 'all 0.15s',
+    borderColor: hovered ? 'var(--border2)' : 'var(--border)',
+    opacity: oauthLoading ? 0.7 : 1,
+  });
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex' }}>
@@ -166,32 +201,33 @@ export default function Login() {
             <p style={{ fontSize: 13, color: 'var(--txt2)' }}>Don't have an account? <Link to="/register" style={{ color: 'var(--accent)' }}>Create one free</Link></p>
           </div>
 
-          {/* OAuth buttons */}
-          {hasOAuth && (
-            <>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {GOOGLE_CLIENT_ID && (
-                  <div id="google-signin-btn" style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
-                    {/* Google Identity Services renders its button here */}
-                  </div>
-                )}
-                {GITHUB_CLIENT_ID && (
-                  <button onClick={handleGitHub} style={oauthBtnStyle} disabled={!!oauthLoading}
-                    onMouseEnter={e => { e.target.style.background = 'var(--bg3)'; e.target.style.borderColor = 'var(--border2)'; }}
-                    onMouseLeave={e => { e.target.style.background = 'var(--bg2)'; e.target.style.borderColor = 'var(--border)'; }}
-                  >
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
-                    {oauthLoading === 'github' ? 'Connecting...' : 'Sign in with GitHub'}
-                  </button>
-                )}
-              </div>
-              <div style={dividerStyle}>
-                <div style={lineStyle} />
-                <span style={{ fontSize: 11, color: 'var(--txt3)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>or continue with email</span>
-                <div style={lineStyle} />
-              </div>
-            </>
-          )}
+          {/* OAuth buttons — always visible */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <OAuthButton
+              onClick={handleGoogle}
+              disabled={!!oauthLoading}
+              loading={oauthLoading === 'google'}
+              icon={<GoogleIcon />}
+              label="Sign in with Google"
+              loadingLabel="Connecting..."
+              style={oauthBtnStyle}
+            />
+            <OAuthButton
+              onClick={handleGitHub}
+              disabled={!!oauthLoading}
+              loading={oauthLoading === 'github'}
+              icon={<GitHubIcon />}
+              label="Sign in with GitHub"
+              loadingLabel="Connecting..."
+              style={oauthBtnStyle}
+            />
+          </div>
+
+          <div style={dividerStyle}>
+            <div style={lineStyle} />
+            <span style={{ fontSize: 11, color: 'var(--txt3)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>or continue with email</span>
+            <div style={lineStyle} />
+          </div>
 
           <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div>
@@ -214,5 +250,40 @@ export default function Login() {
         </div>
       </div>
     </div>
+  );
+}
+
+function OAuthButton({ onClick, disabled, loading, icon, label, loadingLabel, style }) {
+  const [hovered, setHovered] = useState(false);
+  return (
+    <button
+      onClick={onClick}
+      style={style(hovered)}
+      disabled={disabled}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      {icon}
+      {loading ? loadingLabel : label}
+    </button>
+  );
+}
+
+function GoogleIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 48 48">
+      <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+      <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+      <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+      <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+    </svg>
+  );
+}
+
+function GitHubIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+    </svg>
   );
 }

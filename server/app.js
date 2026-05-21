@@ -5,7 +5,12 @@ const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 const errorHandler = require('./middleware/errorHandler');
 
+const mongoose = require('mongoose');
 const app = express();
+
+// Trust proxy — required when running behind Render/Vercel/nginx reverse proxy
+// Fixes express-rate-limit ERR_ERL_UNEXPECTED_X_FORWARDED_FOR
+app.set('trust proxy', 1);
 
 // Security
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
@@ -15,8 +20,12 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 if (process.env.NODE_ENV !== 'test') app.use(morgan('dev'));
 app.use('/api/', rateLimit({ windowMs: 60000, max: 120, message: { success: false, message: 'Rate limit exceeded' } }));
 
-// Health
-app.get('/health', (_, res) => res.json({ status: 'ok', timestamp: new Date(), version: '3.0.0' }));
+// Health — includes DB status so you can actually diagnose issues
+app.get('/health', (_, res) => {
+  const dbState = mongoose.connection.readyState;
+  const dbStatus = { 0: 'disconnected', 1: 'connected', 2: 'connecting', 3: 'disconnecting' };
+  res.json({ status: dbState === 1 ? 'ok' : 'degraded', db: dbStatus[dbState] || 'unknown', timestamp: new Date(), version: '3.0.0' });
+});
 
 // Routes
 app.use('/api/auth', require('./routes/auth.routes'));

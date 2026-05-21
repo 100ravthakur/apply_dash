@@ -2,7 +2,7 @@ const axios = require('axios');
 const { GROQ_API_KEY } = require('../../config/env');
 
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
-const MODEL = 'llama-3.1-70b-versatile';
+const MODEL = 'llama-3.3-70b-versatile';
 
 const callGroq = async (prompt, maxTokens = 1000) => {
   if (!GROQ_API_KEY) {

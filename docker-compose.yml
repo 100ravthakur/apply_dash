@@ -36,6 +36,9 @@ services:
     build:
       context: ./client
       dockerfile: Dockerfile
+      args:
+        - VITE_GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+        - VITE_GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}
     container_name: autoapply_client
     restart: unless-stopped
     ports:

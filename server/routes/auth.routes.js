@@ -17,9 +17,11 @@ router.put('/change-password', protect, c.changePassword);
 // GitHub OAuth redirect: GitHub sends user here with ?code=..., we redirect to the client
 router.get('/github/callback', (req, res) => {
   const code = req.query.code;
+  const state = req.query.state || 'login'; // 'login' or 'register'
   const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
-  if (!code) return res.redirect(`${clientUrl}/login?error=github_no_code`);
-  res.redirect(`${clientUrl}/login?github_code=${code}`);
+  const page = state === 'register' ? '/register' : '/login';
+  if (!code) return res.redirect(`${clientUrl}${page}?error=github_no_code`);
+  res.redirect(`${clientUrl}${page}?github_code=${code}`);
 });
 
 module.exports = router;

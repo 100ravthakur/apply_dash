@@ -3,6 +3,15 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install
 COPY . .
+
+# Accept OAuth client IDs as build args so Vite bakes them into the bundle
+ARG VITE_API_URL
+ARG VITE_GOOGLE_CLIENT_ID
+ARG VITE_GITHUB_CLIENT_ID
+ENV VITE_API_URL=${VITE_API_URL}
+ENV VITE_GOOGLE_CLIENT_ID=${VITE_GOOGLE_CLIENT_ID}
+ENV VITE_GITHUB_CLIENT_ID=${VITE_GITHUB_CLIENT_ID}
+
 RUN npm run build
 
 FROM nginx:alpine

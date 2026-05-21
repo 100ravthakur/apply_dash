@@ -72,7 +72,7 @@ JSON format:
 
   try {
     const res = await axios.post('https://api.groq.com/openai/v1/chat/completions', {
-      model: 'llama-3.1-70b-versatile',
+      model: 'llama-3.3-70b-versatile',
       max_tokens: 2500,
       temperature: 0.1,
       messages: [{ role: 'user', content: prompt }],
